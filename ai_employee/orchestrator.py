@@ -16,7 +16,7 @@ from ai_employee.utils import (
 )
 
 
-APPROVAL_TYPES = {"email", "whatsapp", "git", "git_push", "payment", "social"}
+APPROVAL_TYPES = {"email", "whatsapp", "git", "git_push", "payment", "social", "attendance_marking"}
 
 
 def needs_plan(frontmatter: dict) -> bool:
@@ -57,6 +57,7 @@ def plan_steps(task_type: str) -> list[str]:
         "git_push": ["Create commit locally", "Push after approval"],
         "file_drop": ["Review dropped file", "Summarize requested changes"],
         "doc_update": ["Update Word/Excel file", "Save with versioned name"],
+        "attendance_marking": ["Check attendance status", "Create approval task", "Mark attendance after approval"],
     }
     return base + specific.get(task_type, [])
 
