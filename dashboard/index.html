@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Employee Control Room</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="ambient">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+
+    <div class="page">
+      <header class="topbar">
+        <div class="brand">
+          <div class="logo">AE</div>
+          <div>
+            <p class="eyebrow">Control Room</p>
+            <h1>AI Employee Dashboard</h1>
+          </div>
+        </div>
+        <div class="status">
+          <div class="pill online" id="agent-status">Local Ready</div>
+          <div class="meta">
+            <span>Last sync</span>
+            <strong id="last-sync">--:--</strong>
+          </div>
+            <button class="ghost" id="open-vault">Show Vault Path</button>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div class="hero-copy">
+          <h2>Direct, review, and approve every action.</h2>
+          <p>
+            This console keeps your AI junior accountable. Drafts stay in the
+            vault, approvals gate sensitive actions, and every task leaves an
+            audit trail.
+          </p>
+        </div>
+        <div class="hero-metrics">
+          <div class="metric">
+            <span class="metric-label">Open Tasks</span>
+            <span class="metric-value" data-metric="tasks">0</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Pending Approval</span>
+            <span class="metric-value" data-metric="approvals">0</span>
+          </div>
+          <div class="metric">
+            <span class="metric-label">Watchers</span>
+            <span class="metric-value" id="watcher-count">1</span>
+          </div>
+        </div>
+      </section>
+
+      <main class="grid">
+        <section class="card span-2">
+          <div class="card-header">
+            <h3>Quick Actions</h3>
+            <span class="tag">Primary Controls</span>
+          </div>
+          <div class="card-actions">
+            <button class="primary" id="start-watchers">Start Watchers</button>
+            <button class="secondary" id="stop-watchers">Stop Watchers</button>
+            <button class="secondary" id="run-orchestrator">Run Orchestrator</button>
+            <button class="secondary" id="new-task">Create Task</button>
+            <button class="secondary" id="start-claude">Start Claude</button>
+            <button class="secondary" id="stop-claude">Stop Claude</button>
+          </div>
+          <div class="action-grid">
+            <div class="action-tile">
+              <h4>Email Desk</h4>
+              <p>Draft replies, enforce approvals, and log sent messages.</p>
+              <button class="ghost small">Review drafts</button>
+            </div>
+            <div class="action-tile">
+              <h4>Dev Ops</h4>
+              <p>Prepare commits and request approval before any push.</p>
+              <button class="ghost small">Open repo list</button>
+            </div>
+            <div class="action-tile">
+              <h4>Docs Studio</h4>
+              <p>Update Word and Excel files locally or via OneDrive sync.</p>
+              <button class="ghost small">Open docs</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h3>System Health</h3>
+            <span class="tag">Live</span>
+          </div>
+          <ul class="health-list">
+            <li>
+              <span class="label">Watcher status</span>
+              <span class="value" id="watcher-status">Idle</span>
+            </li>
+            <li>
+              <span class="label">Orchestrator</span>
+              <span class="value" id="orchestrator-status">Ready</span>
+            </li>
+            <li>
+              <span class="label">Claude CLI</span>
+              <span class="value" id="claude-status">Unknown</span>
+            </li>
+            <li>
+              <span class="label">Vault state</span>
+              <span class="value">Clean</span>
+            </li>
+          </ul>
+          <div class="pulse"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h3>Integrations</h3>
+            <span class="tag">Configured</span>
+          </div>
+          <div class="integration-list">
+            <label class="toggle">
+              <input type="checkbox" checked />
+              <span class="slider"></span>
+              <span class="toggle-label">Gmail (draft + approval)</span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" checked />
+              <span class="slider"></span>
+              <span class="toggle-label">GitHub (approval required)</span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" checked />
+              <span class="slider"></span>
+              <span class="toggle-label">OneDrive (local sync)</span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" />
+              <span class="slider"></span>
+              <span class="toggle-label">WhatsApp (draft-only)</span>
+            </label>
+          </div>
+        </section>
+
+        <section class="card span-2" id="developer-console">
+          <div class="card-header">
+            <h3>Developer Console</h3>
+            <span class="tag">Claude Task</span>
+          </div>
+          <form class="form-grid" id="app-form">
+            <label>
+              <span>Language Folder</span>
+              <input type="text" id="app-language" placeholder="laravel / java / react / html / ai / backend / frontend" />
+            </label>
+            <label>
+              <span>App Folder Name</span>
+              <input type="text" id="app-name" placeholder="billing-api" />
+            </label>
+            <label class="span-2">
+              <span>Claude Instruction</span>
+              <textarea
+                id="app-instruction"
+                rows="3"
+                placeholder="Example: Use Claude CLI to scaffold a Laravel app here, then list next steps."
+              ></textarea>
+            </label>
+            <div class="form-actions span-2">
+              <button type="submit" class="primary">Queue Claude Task</button>
+              <span class="form-status" id="app-status">Waiting for input.</span>
+            </div>
+          </form>
+          <p class="helper">
+            After queuing, open terminal and run <code>claude</code>, then follow the task in
+            <code>vault/Needs_Action/</code>.
+          </p>
+        </section>
+
+        <section class="card span-2">
+          <div class="card-header">
+            <h3>Approvals Queue</h3>
+            <span class="tag">Must Review</span>
+          </div>
+          <ul class="list" id="approval-list">
+            <li class="list-item empty">Loading approvals...</li>
+          </ul>
+        </section>
+
+        <section class="card span-2">
+          <div class="card-header">
+            <h3>Active Tasks</h3>
+            <span class="tag">Needs Action</span>
+          </div>
+          <ul class="list" id="task-list">
+            <li class="list-item empty">Loading tasks...</li>
+          </ul>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h3>Work Log</h3>
+            <span class="tag">Last 24h</span>
+          </div>
+          <div class="log" id="work-log">
+            <p>[--:--] Waiting for log data...</p>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h3>Claude Live Log</h3>
+            <span class="tag">Live</span>
+          </div>
+          <div class="log" id="claude-log">
+            <p>[--:--] Waiting for Claude logs...</p>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h3>Policies</h3>
+            <span class="tag">Guardrails</span>
+          </div>
+          <ul class="policy-list">
+            <li>All sends, posts, and pushes need approval.</li>
+            <li>No secrets in repo; use .env only.</li>
+            <li>Drafts live in vault before action.</li>
+          </ul>
+          <button class="ghost small">Edit handbook</button>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

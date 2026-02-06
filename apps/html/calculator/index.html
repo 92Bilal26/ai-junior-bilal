@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Simple Calculator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="title">
+        <h1>Calculator</h1>
+        <p>HTML + CSS + JS</p>
+      </header>
+
+      <section class="calc">
+        <div class="display">
+          <input id="display" type="text" inputmode="decimal" aria-label="Calculator display" readonly />
+        </div>
+
+        <div class="keys" id="keys">
+          <button data-action="clear" class="key danger">C</button>
+          <button data-action="delete" class="key">DEL</button>
+          <button data-action="operator" data-value="(" class="key"> ( </button>
+          <button data-action="operator" data-value=")" class="key"> ) </button>
+
+          <button data-action="digit" data-value="7" class="key">7</button>
+          <button data-action="digit" data-value="8" class="key">8</button>
+          <button data-action="digit" data-value="9" class="key">9</button>
+          <button data-action="operator" data-value="/" class="key accent">÷</button>
+
+          <button data-action="digit" data-value="4" class="key">4</button>
+          <button data-action="digit" data-value="5" class="key">5</button>
+          <button data-action="digit" data-value="6" class="key">6</button>
+          <button data-action="operator" data-value="*" class="key accent">×</button>
+
+          <button data-action="digit" data-value="1" class="key">1</button>
+          <button data-action="digit" data-value="2" class="key">2</button>
+          <button data-action="digit" data-value="3" class="key">3</button>
+          <button data-action="operator" data-value="-" class="key accent">−</button>
+
+          <button data-action="digit" data-value="0" class="key wide">0</button>
+          <button data-action="decimal" data-value="." class="key">.</button>
+          <button data-action="operator" data-value="+" class="key accent">+</button>
+
+          <button data-action="equals" class="key equals">=</button>
+        </div>
+
+        <div class="meta">
+          <span id="status">Ready</span>
+          <span class="hint">Keyboard: 0-9, +, -, *, /, Enter, Backspace</span>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

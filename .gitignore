@@ -1,0 +1,19 @@
+.env
+.state/
+__pycache__/
+*.pyc
+
+# Vault runtime data
+vault/Needs_Action/*
+vault/Plans/*
+vault/Done/*
+vault/Pending_Approval/*
+vault/Approved/*
+vault/Rejected/*
+vault/Logs/*
+vault/Signals/*
+vault/Inbox/*
+!vault/**/.gitkeep
+!vault/Dashboard.md
+!vault/Company_Handbook.md
+!vault/README.md

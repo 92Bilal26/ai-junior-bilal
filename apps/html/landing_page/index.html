@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NovaFlow | Simple Landing Page</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="background">
+      <span class="glow glow-1"></span>
+      <span class="glow glow-2"></span>
+    </div>
+
+    <header class="navbar">
+      <div class="brand">
+        <span class="logo">NF</span>
+        <strong>NovaFlow</strong>
+      </div>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#workflow">Workflow</a>
+        <a href="#pricing">Pricing</a>
+      </nav>
+      <button class="ghost" id="theme-toggle">Light</button>
+    </header>
+
+    <main class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">AI Employee Platform</p>
+        <h1>Automate the busywork. Keep the approvals.</h1>
+        <p class="sub">
+          NovaFlow turns your instructions into plans, drafts, and deliverables
+          with a strict approval gate. Ship faster without losing control.
+        </p>
+        <div class="cta">
+          <button class="primary" id="start-demo">Start Demo</button>
+          <button class="secondary">Download Brief</button>
+        </div>
+        <div class="stats">
+          <div>
+            <strong>24/7</strong>
+            <span>Availability</span>
+          </div>
+          <div>
+            <strong>90%</strong>
+            <span>Cost Savings</span>
+          </div>
+          <div>
+            <strong>1-click</strong>
+            <span>Approvals</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-panel">
+        <div class="panel-header">
+          <span>Status</span>
+          <span class="pill">Live</span>
+        </div>
+        <div class="panel-body">
+          <div class="line">
+            <span>Claude CLI</span>
+            <strong>Running</strong>
+          </div>
+          <div class="line">
+            <span>Orchestrator</span>
+            <strong>Planning</strong>
+          </div>
+          <div class="line">
+            <span>Pending approvals</span>
+            <strong>3</strong>
+          </div>
+        </div>
+        <div class="panel-footer">
+          <p>Next action: Review task plan</p>
+          <button class="secondary small" id="open-queue">Open Queue</button>
+        </div>
+      </div>
+    </main>
+
+    <section class="section" id="features">
+      <h2>Designed for real teams</h2>
+      <div class="cards">
+        <article class="card">
+          <h3>Plan-first execution</h3>
+          <p>Every instruction becomes a checklist before anything changes.</p>
+        </article>
+        <article class="card">
+          <h3>Audit trails</h3>
+          <p>Every action is logged inside your vault and easy to trace.</p>
+        </article>
+        <article class="card">
+          <h3>Human approval</h3>
+          <p>Approval gates ensure sensitive actions never auto‑execute.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section muted" id="workflow">
+      <h2>Workflow in minutes</h2>
+      <ol class="steps">
+        <li>Queue tasks in the dashboard.</li>
+        <li>Claude drafts and plans the work.</li>
+        <li>You approve. The AI executes.</li>
+      </ol>
+    </section>
+
+    <section class="section" id="pricing">
+      <div class="pricing">
+        <div>
+          <h2>Start small, scale fast</h2>
+          <p>Only pay for what your AI employee delivers.</p>
+        </div>
+        <div class="price-card">
+          <p class="plan">Starter</p>
+          <h3>$199</h3>
+          <p class="period">per month</p>
+          <button class="primary">Get Started</button>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>© <span id="year"></span> NovaFlow. All rights reserved.</p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
