@@ -326,10 +326,28 @@ class ESSWatcher(BaseWatcher):
             self.log("Attempting to mark attendance...")
             page.wait_for_timeout(2000)
 
-            # Step 1: Select yesterday's date using calendar picker
-            self.log("Step 1: Selecting yesterday's date from calendar...")
-            yesterday = datetime.now() - timedelta(days=1)
-            yesterday_day = yesterday.strftime("%d").lstrip("0")  # Remove leading zero
+            # Step 1: Select appropriate date using calendar picker
+            # Skip Sundays (official day off) and find first workday without attendance
+            self.log("Step 1: Finding appropriate date to mark attendance...")
+
+            # Start from yesterday and work backwards to find a workday
+            target_date = None
+            for days_back in range(1, 4):  # Check last 3 days
+                check_date = datetime.now() - timedelta(days=days_back)
+                # Skip Sundays (weekday() returns 6 for Sunday)
+                if check_date.weekday() == 6:
+                    self.log(f"  Skipping {check_date.strftime('%d/%m/%Y')} (Sunday - official day off)")
+                    continue
+                target_date = check_date
+                break
+
+            if not target_date:
+                self.log("ERROR: Could not find a valid workday to mark attendance")
+                return False
+
+            target_day = target_date.strftime("%d").lstrip("0")  # Remove leading zero
+            self.log(f"Selecting date: {target_date.strftime('%d/%m/%Y')} (day {target_day})")
+
             date_selected = False
 
             try:
@@ -342,7 +360,7 @@ class ESSWatcher(BaseWatcher):
                     () => {{
                         const tds = document.querySelectorAll('td');
                         for (let td of tds) {{
-                            if (td.textContent.trim() === '{yesterday_day}') {{
+                            if (td.textContent.trim() === '{target_day}') {{
                                 const link = td.querySelector('a');
                                 if (link) {{
                                     link.click();
@@ -356,7 +374,7 @@ class ESSWatcher(BaseWatcher):
                     }}
                 """)
                 if result:
-                    self.log(f"Selected date: {yesterday.strftime('%d/%m/%Y')}")
+                    self.log(f"Selected date: {target_date.strftime('%d/%m/%Y')}")
                     date_selected = True
                     page.wait_for_timeout(1500)
             except Exception as e:
@@ -364,6 +382,23 @@ class ESSWatcher(BaseWatcher):
 
             if not date_selected:
                 self.log("Warning: Could not select date from calendar")
+
+            # Check if there's an error message (e.g., attendance already marked)
+            error_check = page.evaluate("""
+                () => {
+                    const errorMsg = document.querySelector('.alert-danger, .error-message, [class*="error"]');
+                    if (errorMsg) {
+                        return errorMsg.textContent.trim();
+                    }
+                    return null;
+                }
+            """)
+
+            if error_check:
+                self.log(f"System message: {error_check}")
+                if "already" in error_check.lower() or "marked" in error_check.lower():
+                    self.log(f"Attendance already marked for {target_date.strftime('%d/%m/%Y')}")
+                    return True  # Consider this a success - already marked
 
             # Step 2: Select "حاضر" (Present) from dropdown
             self.log("Step 2: Selecting 'حاضر' (Present) from dropdown...")
