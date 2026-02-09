@@ -437,51 +437,49 @@ class ESSWatcher(BaseWatcher):
             arrival_found = False
 
             try:
-                # Use click + clear + type for more reliable input filling
-                arrival_selectors = [
-                    "input[placeholder*='وقت']",  # Contains Urdu time label
-                    "input[id*='Arrival']",
-                    "input[id*='arrival']",
-                    "input[name*='Arrival']",
-                    "input[name*='arrival']",
-                ]
+                # Get all visible time inputs (excluding date)
+                arrival_inputs = page.query_selector_all(
+                    "input[type='text']:visible, input:not([type]):visible, input[type='time']:visible"
+                )
 
-                # Try specific selectors first, then generic
-                for selector in arrival_selectors:
-                    try:
-                        inp = page.query_selector(selector)
-                        if inp:
-                            inp.click()
-                            inp.fill("09:00 AM")
-                            inp.evaluate("() => { this.dispatchEvent(new Event('change', {bubbles: true})); }")
-                            self.log(f"Arrival time filled using selector: {selector}")
-                            arrival_found = True
-                            break
-                    except:
-                        pass
+                if arrival_inputs and len(arrival_inputs) > 0:
+                    # Try first input (arrival time)
+                    first_input = None
+                    for inp in arrival_inputs:
+                        try:
+                            box = inp.bounding_box()
+                            inp_id = inp.get_attribute("id") or ""
+                            inp_name = inp.get_attribute("name") or ""
 
-                # If specific selectors failed, try generic approach
-                if not arrival_found:
-                    result = page.evaluate("""
-                        () => {
-                            const inputs = document.querySelectorAll('input[type="text"], input:not([type]), input[type="time"]');
-                            const visible = Array.from(inputs).filter(i => {
-                                const r = i.getBoundingClientRect();
-                                return r.height > 0 && !i.id.includes('date') && !i.name?.includes('date');
-                            });
-                            if (visible.length >= 1) {
-                                const firstInput = visible[0];
-                                firstInput.focus();
-                                firstInput.value = '09:00 AM';
-                                firstInput.dispatchEvent(new Event('change', {bubbles: true}));
-                                firstInput.dispatchEvent(new Event('input', {bubbles: true}));
-                                firstInput.dispatchEvent(new Event('blur', {bubbles: true}));
-                                return true;
+                            # Skip date fields
+                            if "date" not in inp_id.lower() and "date" not in inp_name.lower():
+                                first_input = inp
+                                break
+                        except:
+                            pass
+
+                    if first_input:
+                        # Click to focus
+                        first_input.click()
+                        page.wait_for_timeout(200)
+
+                        # Clear the field (select all + delete)
+                        first_input.evaluate("() => { this.value = ''; }")
+                        page.wait_for_timeout(100)
+
+                        # Type the value character by character
+                        first_input.type("09:00 AM", delay=50)
+                        page.wait_for_timeout(200)
+
+                        # Dispatch events
+                        first_input.evaluate("""
+                            () => {
+                                this.dispatchEvent(new Event('change', {bubbles: true}));
+                                this.dispatchEvent(new Event('input', {bubbles: true}));
+                                this.dispatchEvent(new Event('blur', {bubbles: true}));
                             }
-                            return false;
-                        }
-                    """)
-                    if result:
+                        """)
+
                         self.log("Arrival time filled: 09:00 AM")
                         arrival_found = True
             except Exception as e:
@@ -497,51 +495,52 @@ class ESSWatcher(BaseWatcher):
             departure_found = False
 
             try:
-                # Use click + clear + type for more reliable input filling
-                departure_selectors = [
-                    "input[placeholder*='رخصت']",  # Urdu departure label
-                    "input[id*='Departure']",
-                    "input[id*='departure']",
-                    "input[name*='Departure']",
-                    "input[name*='departure']",
-                ]
+                # Get all visible time inputs (excluding date)
+                departure_inputs = page.query_selector_all(
+                    "input[type='text']:visible, input:not([type]):visible, input[type='time']:visible"
+                )
 
-                # Try specific selectors first
-                for selector in departure_selectors:
-                    try:
-                        inp = page.query_selector(selector)
-                        if inp:
-                            inp.click()
-                            inp.fill("05:00 PM")
-                            inp.evaluate("() => { this.dispatchEvent(new Event('change', {bubbles: true})); }")
-                            self.log(f"Departure time filled using selector: {selector}")
-                            departure_found = True
-                            break
-                    except:
-                        pass
+                if departure_inputs and len(departure_inputs) >= 2:
+                    # Try second input (departure time)
+                    second_input = None
+                    count = 0
+                    for inp in departure_inputs:
+                        try:
+                            box = inp.bounding_box()
+                            inp_id = inp.get_attribute("id") or ""
+                            inp_name = inp.get_attribute("name") or ""
 
-                # If specific selectors failed, try generic approach
-                if not departure_found:
-                    result = page.evaluate("""
-                        () => {
-                            const inputs = document.querySelectorAll('input[type="text"], input:not([type]), input[type="time"]');
-                            const visible = Array.from(inputs).filter(i => {
-                                const r = i.getBoundingClientRect();
-                                return r.height > 0 && !i.id.includes('date') && !i.name?.includes('date');
-                            });
-                            if (visible.length >= 2) {
-                                const secondInput = visible[1];
-                                secondInput.focus();
-                                secondInput.value = '05:00 PM';
-                                secondInput.dispatchEvent(new Event('change', {bubbles: true}));
-                                secondInput.dispatchEvent(new Event('input', {bubbles: true}));
-                                secondInput.dispatchEvent(new Event('blur', {bubbles: true}));
-                                return true;
+                            # Skip date fields
+                            if "date" not in inp_id.lower() and "date" not in inp_name.lower():
+                                count += 1
+                                if count == 2:
+                                    second_input = inp
+                                    break
+                        except:
+                            pass
+
+                    if second_input:
+                        # Click to focus
+                        second_input.click()
+                        page.wait_for_timeout(200)
+
+                        # Clear the field
+                        second_input.evaluate("() => { this.value = ''; }")
+                        page.wait_for_timeout(100)
+
+                        # Type the value character by character
+                        second_input.type("05:00 PM", delay=50)
+                        page.wait_for_timeout(200)
+
+                        # Dispatch events
+                        second_input.evaluate("""
+                            () => {
+                                this.dispatchEvent(new Event('change', {bubbles: true}));
+                                this.dispatchEvent(new Event('input', {bubbles: true}));
+                                this.dispatchEvent(new Event('blur', {bubbles: true}));
                             }
-                            return false;
-                        }
-                    """)
-                    if result:
+                        """)
+
                         self.log("Departure time filled: 05:00 PM")
                         departure_found = True
             except Exception as e:
