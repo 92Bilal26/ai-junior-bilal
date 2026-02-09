@@ -437,57 +437,113 @@ class ESSWatcher(BaseWatcher):
             arrival_found = False
 
             try:
-                result = page.evaluate("""
-                    () => {
-                        const inputs = document.querySelectorAll('input[type="text"], input:not([type]), input[type="time"]');
-                        const visible = Array.from(inputs).filter(i => {
-                            const r = i.getBoundingClientRect();
-                            return r.height > 0 && !i.id.includes('date');
-                        });
-                        if (visible.length >= 1) {
-                            visible[0].value = '09:00 AM';
-                            visible[0].dispatchEvent(new Event('change', {bubbles: true}));
-                            visible[0].dispatchEvent(new Event('input', {bubbles: true}));
-                            return true;
+                # Use click + clear + type for more reliable input filling
+                arrival_selectors = [
+                    "input[placeholder*='وقت']",  # Contains Urdu time label
+                    "input[id*='Arrival']",
+                    "input[id*='arrival']",
+                    "input[name*='Arrival']",
+                    "input[name*='arrival']",
+                ]
+
+                # Try specific selectors first, then generic
+                for selector in arrival_selectors:
+                    try:
+                        inp = page.query_selector(selector)
+                        if inp:
+                            inp.click()
+                            inp.fill("09:00 AM")
+                            inp.evaluate("() => { this.dispatchEvent(new Event('change', {bubbles: true})); }")
+                            self.log(f"Arrival time filled using selector: {selector}")
+                            arrival_found = True
+                            break
+                    except:
+                        pass
+
+                # If specific selectors failed, try generic approach
+                if not arrival_found:
+                    result = page.evaluate("""
+                        () => {
+                            const inputs = document.querySelectorAll('input[type="text"], input:not([type]), input[type="time"]');
+                            const visible = Array.from(inputs).filter(i => {
+                                const r = i.getBoundingClientRect();
+                                return r.height > 0 && !i.id.includes('date') && !i.name?.includes('date');
+                            });
+                            if (visible.length >= 1) {
+                                const firstInput = visible[0];
+                                firstInput.focus();
+                                firstInput.value = '09:00 AM';
+                                firstInput.dispatchEvent(new Event('change', {bubbles: true}));
+                                firstInput.dispatchEvent(new Event('input', {bubbles: true}));
+                                firstInput.dispatchEvent(new Event('blur', {bubbles: true}));
+                                return true;
+                            }
+                            return false;
                         }
-                        return false;
-                    }
-                """)
-                if result:
-                    self.log("Arrival time filled: 09:00 AM")
-                    arrival_found = True
+                    """)
+                    if result:
+                        self.log("Arrival time filled: 09:00 AM")
+                        arrival_found = True
             except Exception as e:
                 self.log(f"Error with arrival time: {str(e)}")
 
             if not arrival_found:
                 self.log("Warning: Could not fill arrival time")
 
-            page.wait_for_timeout(500)
+            page.wait_for_timeout(1000)
 
             # Step 4: Fill departure time (وقت رخصت) - 05:00 PM
             self.log("Step 4: Filling departure time with 05:00 PM...")
             departure_found = False
 
             try:
-                result = page.evaluate("""
-                    () => {
-                        const inputs = document.querySelectorAll('input[type="text"], input:not([type]), input[type="time"]');
-                        const visible = Array.from(inputs).filter(i => {
-                            const r = i.getBoundingClientRect();
-                            return r.height > 0 && !i.id.includes('date');
-                        });
-                        if (visible.length >= 2) {
-                            visible[1].value = '05:00 PM';
-                            visible[1].dispatchEvent(new Event('change', {bubbles: true}));
-                            visible[1].dispatchEvent(new Event('input', {bubbles: true}));
-                            return true;
+                # Use click + clear + type for more reliable input filling
+                departure_selectors = [
+                    "input[placeholder*='رخصت']",  # Urdu departure label
+                    "input[id*='Departure']",
+                    "input[id*='departure']",
+                    "input[name*='Departure']",
+                    "input[name*='departure']",
+                ]
+
+                # Try specific selectors first
+                for selector in departure_selectors:
+                    try:
+                        inp = page.query_selector(selector)
+                        if inp:
+                            inp.click()
+                            inp.fill("05:00 PM")
+                            inp.evaluate("() => { this.dispatchEvent(new Event('change', {bubbles: true})); }")
+                            self.log(f"Departure time filled using selector: {selector}")
+                            departure_found = True
+                            break
+                    except:
+                        pass
+
+                # If specific selectors failed, try generic approach
+                if not departure_found:
+                    result = page.evaluate("""
+                        () => {
+                            const inputs = document.querySelectorAll('input[type="text"], input:not([type]), input[type="time"]');
+                            const visible = Array.from(inputs).filter(i => {
+                                const r = i.getBoundingClientRect();
+                                return r.height > 0 && !i.id.includes('date') && !i.name?.includes('date');
+                            });
+                            if (visible.length >= 2) {
+                                const secondInput = visible[1];
+                                secondInput.focus();
+                                secondInput.value = '05:00 PM';
+                                secondInput.dispatchEvent(new Event('change', {bubbles: true}));
+                                secondInput.dispatchEvent(new Event('input', {bubbles: true}));
+                                secondInput.dispatchEvent(new Event('blur', {bubbles: true}));
+                                return true;
+                            }
+                            return false;
                         }
-                        return false;
-                    }
-                """)
-                if result:
-                    self.log("Departure time filled: 05:00 PM")
-                    departure_found = True
+                    """)
+                    if result:
+                        self.log("Departure time filled: 05:00 PM")
+                        departure_found = True
             except Exception as e:
                 self.log(f"Error with departure time: {str(e)}")
 
