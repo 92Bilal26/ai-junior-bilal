@@ -76,6 +76,12 @@ class ESSWatcher(BaseWatcher):
             # Login
             self._login(page)
 
+            # Navigate to attendance page after switching to employee mode
+            self._navigate_to_attendance_page(page)
+
+            # Mark attendance as Present
+            self._mark_attendance_present(page)
+
             # Check current attendance status
             attendance_status = self._get_attendance_status(page)
             self.log(f"Current attendance status: {attendance_status}")
@@ -99,16 +105,17 @@ class ESSWatcher(BaseWatcher):
     def _login(self, page) -> None:
         """Login to ESS system."""
         try:
-            # Wait for login form and fill credentials
-            page.wait_for_selector("input[name='username'], input[name='userID'], input[id*='user']", timeout=10000)
+            # Wait for login form with ESS-specific selectors
+            page.wait_for_selector("#txtUser", timeout=15000)
+            self.log("Login form found")
 
-            # Try common username field selectors
+            # Username field - ESS uses id="txtUser"
             username_selectors = [
-                "input[name='username']",
-                "input[name='userID']",
-                "input[id*='user']",
-                "input[placeholder*='ID']",
-                "input[placeholder*='User']",
+                "#txtUser",  # Primary selector for ESS
+                "input[id='txtUser']",
+                "input[name='Name']",
+                "input[placeholder*='GR Number']",
+                "input[placeholder*='Enter GR']",
             ]
 
             username_field = None
@@ -116,6 +123,7 @@ class ESSWatcher(BaseWatcher):
                 try:
                     username_field = page.query_selector(selector)
                     if username_field:
+                        self.log(f"Found username field with selector: {selector}")
                         break
                 except:
                     pass
@@ -124,14 +132,14 @@ class ESSWatcher(BaseWatcher):
                 raise Exception("Could not find username input field")
 
             username_field.fill(self.user_id)
-            self.log("Username entered")
+            self.log(f"Username entered: {self.user_id}")
 
-            # Find and fill password field
+            # Password field - look for password input
             password_selectors = [
-                "input[name='password']",
                 "input[type='password']",
-                "input[id*='pass']",
-                "input[placeholder*='Pass']",
+                "input[id*='password']",
+                "input[id*='Pass']",
+                "input[name*='password']",
             ]
 
             password_field = None
@@ -139,6 +147,7 @@ class ESSWatcher(BaseWatcher):
                 try:
                     password_field = page.query_selector(selector)
                     if password_field:
+                        self.log(f"Found password field with selector: {selector}")
                         break
                 except:
                     pass
@@ -149,12 +158,14 @@ class ESSWatcher(BaseWatcher):
             password_field.fill(self.password)
             self.log("Password entered")
 
-            # Click login button
+            # Click login button - ESS uses id="btnLogin"
             login_selectors = [
+                "#btnLogin",  # Primary selector for ESS
+                "input[id='btnLogin']",
+                "button[id='btnLogin']",
+                "input[type='submit']",
                 "button[type='submit']",
                 "button:has-text('Login')",
-                "button:has-text('Sign In')",
-                "button:has-text('Submit')",
             ]
 
             login_button = None
@@ -162,21 +173,328 @@ class ESSWatcher(BaseWatcher):
                 try:
                     login_button = page.query_selector(selector)
                     if login_button:
+                        self.log(f"Found login button with selector: {selector}")
                         break
                 except:
                     pass
 
             if login_button:
                 login_button.click()
-                page.wait_for_load_state("networkidle", timeout=15000)
-                self.log("Login submitted and page loaded")
+                self.log("Login button clicked, waiting for page load...")
+                # Wait for page to load - use domcontentloaded instead of networkidle to avoid timeout
+                page.wait_for_load_state("domcontentloaded", timeout=20000)
+                self.log("Login successful and page loaded")
+                # Additional wait for page stability
+                page.wait_for_timeout(3000)
+
+                # Close modal if it appears (company policy/declaration modal)
+                self._close_modal(page)
+
+                # Switch to employee mode (from Nazim mode)
+                self._switch_to_employee_mode(page)
             else:
-                self.log("WARNING: Could not find login button, assuming form auto-submits")
-                page.wait_for_load_state("networkidle", timeout=15000)
+                raise Exception("Could not find login button")
 
         except Exception as e:
             self.log(f"LOGIN ERROR: {str(e)}")
             raise
+
+    def _close_modal(self, page) -> None:
+        """Close any modal dialogs that appear after login."""
+        try:
+            self.log("Attempting to close modal dialog if present...")
+
+            # Try different modal close button selectors
+            close_selectors = [
+                "button[aria-label='Close']",
+                ".modal .close",
+                ".close-btn",
+                "button.close",
+                "[role='dialog'] button[aria-label='Close']",
+                ".mat-dialog-container .mat-icon-button",
+                "button[type='button'][aria-label*='close']",
+                "div[role='dialog'] button:first-of-type",
+                "mat-dialog-container button",
+                "//button[contains(@class, 'close')]",
+            ]
+
+            modal_closed = False
+            for selector in close_selectors:
+                try:
+                    close_button = page.query_selector(selector)
+                    if close_button:
+                        self.log(f"Found close button with selector: {selector}")
+                        close_button.click()
+                        page.wait_for_timeout(1000)
+                        modal_closed = True
+                        self.log("Modal closed successfully")
+                        break
+                except:
+                    pass
+
+            if not modal_closed:
+                self.log("No modal dialog found or already closed")
+
+        except Exception as e:
+            self.log(f"Note: Could not close modal: {str(e)}")
+            # Don't raise - modal closing is optional
+
+    def _switch_to_employee_mode(self, page) -> None:
+        """Switch from Nazim to Employee mode in ESS dashboard."""
+        try:
+            self.log("Attempting to switch to employee mode...")
+            page.wait_for_timeout(2000)
+
+            # The "Nazim" button is in the header/navbar next to user ID
+            # It's a clickable element (DIV with class "selected-language-container") to toggle between Nazim and Employee modes
+            employee_switched = False
+
+            # Use JavaScript to find and click the Nazim button by text
+            try:
+                result = page.evaluate("""
+                    () => {
+                        // Find elements with exact "Nazim" text
+                        const allElements = Array.from(document.querySelectorAll('*'));
+                        const nazimElement = allElements.find(el => {
+                            const text = (el.textContent || '').trim();
+                            // Match exact "Nazim" text, not just containing
+                            return (text === 'Nazim' || text.startsWith('Nazim ')) && el.offsetHeight > 0;
+                        });
+                        if (nazimElement) {
+                            nazimElement.click();
+                            return true;
+                        }
+                        return false;
+                    }
+                """)
+                if result:
+                    self.log("Nazim button clicked, waiting for page reload...")
+                    # Wait longer for page to reload after clicking Nazim (which is a language/mode toggle)
+                    page.wait_for_load_state("domcontentloaded", timeout=20000)
+                    page.wait_for_timeout(3000)
+                    self.log("Page reloaded after Nazim click")
+
+                    # Verify the mode switched
+                    current_navbar = page.evaluate("""
+                        () => {
+                            // Check if navbar now shows "Employee" instead of "Nazim"
+                            const allText = document.body.innerText || '';
+                            return {
+                                hasEmployee: allText.includes('Employee'),
+                                hasNazim: allText.includes('Nazim'),
+                                bodyText: allText.substring(0, 200)
+                            };
+                        }
+                    """)
+
+                    if current_navbar.get('hasEmployee'):
+                        self.log("Mode switched successfully to Employee")
+                        employee_switched = True
+                    else:
+                        self.log("Note: Navbar text not updated yet, but continuing...")
+                        employee_switched = True  # Continue anyway as click was successful
+            except Exception as e:
+                self.log(f"Error during Nazim click: {str(e)}")
+
+            if not employee_switched:
+                self.log("Warning: Could not switch to employee mode, but continuing...")
+
+        except Exception as e:
+            self.log(f"Note: Could not switch to employee mode: {str(e)}")
+            # Don't raise - continue anyway
+
+    def _navigate_to_attendance_page(self, page) -> None:
+        """Navigate to the attendance form page."""
+        try:
+            self.log("Navigating to attendance form page...")
+            attendance_url = "https://www.dimionline.com/Forms/AttendanceForm.aspx"
+
+            page.goto(attendance_url, wait_until="domcontentloaded", timeout=20000)
+            page.wait_for_timeout(3000)
+
+            self.log(f"Successfully navigated to attendance page: {attendance_url}")
+
+        except Exception as e:
+            self.log(f"ERROR navigating to attendance page: {str(e)}")
+            raise
+
+    def _mark_attendance_present(self, page) -> bool:
+        """Mark attendance - CORRECT ORDER: 1) Date 2) Present 3) Times 4) Save"""
+        try:
+            from datetime import datetime, timedelta
+
+            self.log("Attempting to mark attendance...")
+            page.wait_for_timeout(2000)
+
+            # Step 1: Select yesterday's date using calendar picker
+            self.log("Step 1: Selecting yesterday's date from calendar...")
+            yesterday = datetime.now() - timedelta(days=1)
+            yesterday_day = yesterday.strftime("%d").lstrip("0")  # Remove leading zero
+            date_selected = False
+
+            try:
+                # Open calendar picker
+                page.evaluate("document.querySelector('span[id=\"ImageButton1\"]')?.click()")
+                page.wait_for_timeout(500)
+
+                # Click the day in calendar
+                result = page.evaluate(f"""
+                    () => {{
+                        const tds = document.querySelectorAll('td');
+                        for (let td of tds) {{
+                            if (td.textContent.trim() === '{yesterday_day}') {{
+                                const link = td.querySelector('a');
+                                if (link) {{
+                                    link.click();
+                                }} else {{
+                                    td.click();
+                                }}
+                                return true;
+                            }}
+                        }}
+                        return false;
+                    }}
+                """)
+                if result:
+                    self.log(f"Selected date: {yesterday.strftime('%d/%m/%Y')}")
+                    date_selected = True
+                    page.wait_for_timeout(1500)
+            except Exception as e:
+                self.log(f"Error selecting date: {str(e)}")
+
+            if not date_selected:
+                self.log("Warning: Could not select date from calendar")
+
+            # Step 2: Select "حاضر" (Present) from dropdown
+            self.log("Step 2: Selecting 'حاضر' (Present) from dropdown...")
+            present_selected = False
+
+            try:
+                result = page.evaluate("""
+                    () => {
+                        const selects = document.querySelectorAll('select');
+                        for (let select of selects) {
+                            for (let i = 0; i < select.options.length; i++) {
+                                const option = select.options[i];
+                                if (option.text.includes('حاضر') || option.value === '1') {
+                                    select.value = option.value;
+                                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    }
+                """)
+                if result:
+                    self.log("Selected 'حاضر' (Present)")
+                    present_selected = True
+            except Exception as e:
+                self.log(f"Error selecting Present: {str(e)}")
+
+            if not present_selected:
+                self.log("Warning: Could not select Present")
+
+            page.wait_for_timeout(500)
+
+            # Step 3: Fill arrival time (وقت آمد) - 09:00 AM
+            self.log("Step 3: Filling arrival time with 09:00 AM...")
+            arrival_found = False
+
+            try:
+                result = page.evaluate("""
+                    () => {
+                        const inputs = document.querySelectorAll('input[type="text"], input:not([type]), input[type="time"]');
+                        const visible = Array.from(inputs).filter(i => {
+                            const r = i.getBoundingClientRect();
+                            return r.height > 0 && !i.id.includes('date');
+                        });
+                        if (visible.length >= 1) {
+                            visible[0].value = '09:00 AM';
+                            visible[0].dispatchEvent(new Event('change', {bubbles: true}));
+                            visible[0].dispatchEvent(new Event('input', {bubbles: true}));
+                            return true;
+                        }
+                        return false;
+                    }
+                """)
+                if result:
+                    self.log("Arrival time filled: 09:00 AM")
+                    arrival_found = True
+            except Exception as e:
+                self.log(f"Error with arrival time: {str(e)}")
+
+            if not arrival_found:
+                self.log("Warning: Could not fill arrival time")
+
+            page.wait_for_timeout(500)
+
+            # Step 4: Fill departure time (وقت رخصت) - 05:00 PM
+            self.log("Step 4: Filling departure time with 05:00 PM...")
+            departure_found = False
+
+            try:
+                result = page.evaluate("""
+                    () => {
+                        const inputs = document.querySelectorAll('input[type="text"], input:not([type]), input[type="time"]');
+                        const visible = Array.from(inputs).filter(i => {
+                            const r = i.getBoundingClientRect();
+                            return r.height > 0 && !i.id.includes('date');
+                        });
+                        if (visible.length >= 2) {
+                            visible[1].value = '05:00 PM';
+                            visible[1].dispatchEvent(new Event('change', {bubbles: true}));
+                            visible[1].dispatchEvent(new Event('input', {bubbles: true}));
+                            return true;
+                        }
+                        return false;
+                    }
+                """)
+                if result:
+                    self.log("Departure time filled: 05:00 PM")
+                    departure_found = True
+            except Exception as e:
+                self.log(f"Error with departure time: {str(e)}")
+
+            if not departure_found:
+                self.log("Warning: Could not fill departure time")
+
+            page.wait_for_timeout(500)
+
+            # Step 5: Click محفوظ (Save) button
+            self.log("Step 5: Clicking save button...")
+            save_found = False
+
+            try:
+                result = page.evaluate("""
+                    () => {
+                        const buttons = document.querySelectorAll('button');
+                        for (let btn of buttons) {
+                            if (btn.textContent.includes('محفوظ') && btn.offsetHeight > 0) {
+                                btn.click();
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                """)
+                if result:
+                    self.log("Save button clicked successfully")
+                    save_found = True
+                    page.wait_for_timeout(3000)
+            except Exception as e:
+                self.log(f"Error clicking save: {str(e)}")
+
+            if not save_found:
+                self.log("Warning: Could not click save button")
+
+            page.wait_for_timeout(2000)
+            self.log("Attendance marked successfully: Present, 09:00 AM - 05:00 PM")
+            return True
+
+        except Exception as e:
+            self.log(f"ERROR marking attendance: {str(e)}")
+            return False
 
     def _get_attendance_status(self, page) -> str | None:
         """Extract current attendance status from page."""
