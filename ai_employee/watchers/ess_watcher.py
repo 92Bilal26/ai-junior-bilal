@@ -326,25 +326,11 @@ class ESSWatcher(BaseWatcher):
             self.log("Attempting to mark attendance...")
             page.wait_for_timeout(2000)
 
-            # Step 1: Select appropriate date using calendar picker
-            # Skip Sundays (official day off) and find first workday without attendance
-            self.log("Step 1: Finding appropriate date to mark attendance...")
+            # Step 1: Select yesterday's date using calendar picker
+            self.log("Step 1: Selecting yesterday's date...")
 
-            # Start from yesterday and work backwards to find a workday
-            target_date = None
-            for days_back in range(1, 4):  # Check last 3 days
-                check_date = datetime.now() - timedelta(days=days_back)
-                # Skip Sundays (weekday() returns 6 for Sunday)
-                if check_date.weekday() == 6:
-                    self.log(f"  Skipping {check_date.strftime('%d/%m/%Y')} (Sunday - official day off)")
-                    continue
-                target_date = check_date
-                break
-
-            if not target_date:
-                self.log("ERROR: Could not find a valid workday to mark attendance")
-                return False
-
+            # Simply use yesterday - don't skip any days
+            target_date = datetime.now() - timedelta(days=1)
             target_day = target_date.strftime("%d").lstrip("0")  # Remove leading zero
             self.log(f"Selecting date: {target_date.strftime('%d/%m/%Y')} (day {target_day})")
 
@@ -432,56 +418,29 @@ class ESSWatcher(BaseWatcher):
 
             page.wait_for_timeout(500)
 
-            # Step 3: Fill arrival time (وقت آمد) - 09:00 AM
-            self.log("Step 3: Filling arrival time with 09:00 AM...")
+            # Step 3: Fill arrival time (وقت آمد) - 09:00 (24-hour format for HTML5 type="time")
+            self.log("Step 3: Filling arrival time with 09:00...")
             arrival_found = False
 
             try:
-                # Get all visible time inputs (excluding date)
-                arrival_inputs = page.query_selector_all(
-                    "input[type='text']:visible, input:not([type]):visible, input[type='time']:visible"
-                )
+                # Try specific ID selector for arrival time input
+                arrival_input = page.query_selector("input#ContentPlaceHolder1_txtTimeIN")
+                if not arrival_input:
+                    # Fallback: try by name
+                    arrival_input = page.query_selector("input[name*='txtTimeIN']")
 
-                if arrival_inputs and len(arrival_inputs) > 0:
-                    # Try first input (arrival time)
-                    first_input = None
-                    for inp in arrival_inputs:
-                        try:
-                            box = inp.bounding_box()
-                            inp_id = inp.get_attribute("id") or ""
-                            inp_name = inp.get_attribute("name") or ""
-
-                            # Skip date fields
-                            if "date" not in inp_id.lower() and "date" not in inp_name.lower():
-                                first_input = inp
-                                break
-                        except:
-                            pass
-
-                    if first_input:
-                        # Click to focus
-                        first_input.click()
-                        page.wait_for_timeout(200)
-
-                        # Clear the field (select all + delete)
-                        first_input.evaluate("() => { this.value = ''; }")
-                        page.wait_for_timeout(100)
-
-                        # Type the value character by character
-                        first_input.type("09:00 AM", delay=50)
-                        page.wait_for_timeout(200)
-
-                        # Dispatch events
-                        first_input.evaluate("""
-                            () => {
-                                this.dispatchEvent(new Event('change', {bubbles: true}));
-                                this.dispatchEvent(new Event('input', {bubbles: true}));
-                                this.dispatchEvent(new Event('blur', {bubbles: true}));
-                            }
-                        """)
-
-                        self.log("Arrival time filled: 09:00 AM")
-                        arrival_found = True
+                if arrival_input:
+                    # For HTML5 type="time" inputs, use 24-hour format HH:mm
+                    arrival_input.fill("09:00")
+                    arrival_input.evaluate("""
+                        () => {
+                            this.dispatchEvent(new Event('change', {bubbles: true}));
+                            this.dispatchEvent(new Event('input', {bubbles: true}));
+                            this.dispatchEvent(new Event('blur', {bubbles: true}));
+                        }
+                    """)
+                    self.log("Arrival time filled: 09:00")
+                    arrival_found = True
             except Exception as e:
                 self.log(f"Error with arrival time: {str(e)}")
 
@@ -490,59 +449,30 @@ class ESSWatcher(BaseWatcher):
 
             page.wait_for_timeout(1000)
 
-            # Step 4: Fill departure time (وقت رخصت) - 05:00 PM
-            self.log("Step 4: Filling departure time with 05:00 PM...")
+            # Step 4: Fill departure time (وقت رخصت) - 17:00 (24-hour format for HTML5 type="time")
+            self.log("Step 4: Filling departure time with 17:00...")
             departure_found = False
 
             try:
-                # Get all visible time inputs (excluding date)
-                departure_inputs = page.query_selector_all(
-                    "input[type='text']:visible, input:not([type]):visible, input[type='time']:visible"
-                )
+                # Try specific ID selector for departure time input
+                departure_input = page.query_selector("input#ContentPlaceHolder1_txtTimeOUT")
+                if not departure_input:
+                    # Fallback: try by name
+                    departure_input = page.query_selector("input[name*='txtTimeOUT']")
 
-                if departure_inputs and len(departure_inputs) >= 2:
-                    # Try second input (departure time)
-                    second_input = None
-                    count = 0
-                    for inp in departure_inputs:
-                        try:
-                            box = inp.bounding_box()
-                            inp_id = inp.get_attribute("id") or ""
-                            inp_name = inp.get_attribute("name") or ""
-
-                            # Skip date fields
-                            if "date" not in inp_id.lower() and "date" not in inp_name.lower():
-                                count += 1
-                                if count == 2:
-                                    second_input = inp
-                                    break
-                        except:
-                            pass
-
-                    if second_input:
-                        # Click to focus
-                        second_input.click()
-                        page.wait_for_timeout(200)
-
-                        # Clear the field
-                        second_input.evaluate("() => { this.value = ''; }")
-                        page.wait_for_timeout(100)
-
-                        # Type the value character by character
-                        second_input.type("05:00 PM", delay=50)
-                        page.wait_for_timeout(200)
-
-                        # Dispatch events
-                        second_input.evaluate("""
-                            () => {
-                                this.dispatchEvent(new Event('change', {bubbles: true}));
-                                this.dispatchEvent(new Event('input', {bubbles: true}));
-                                this.dispatchEvent(new Event('blur', {bubbles: true}));
-                            }
-                        """)
-
-                        self.log("Departure time filled: 05:00 PM")
-                        departure_found = True
+                if departure_input:
+                    # For HTML5 type="time" inputs, use 24-hour format HH:mm
+                    # 17:00 = 5:00 PM
+                    departure_input.fill("17:00")
+                    departure_input.evaluate("""
+                        () => {
+                            this.dispatchEvent(new Event('change', {bubbles: true}));
+                            this.dispatchEvent(new Event('input', {bubbles: true}));
+                            this.dispatchEvent(new Event('blur', {bubbles: true}));
+                        }
+                    """)
+                    self.log("Departure time filled: 17:00")
+                    departure_found = True
             except Exception as e:
                 self.log(f"Error with departure time: {str(e)}")
 
